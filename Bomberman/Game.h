@@ -1,6 +1,7 @@
 #pragma once
 #ifndef GAME_H
 #define GAME_H
+
 #include "SFML/Graphics.hpp"
 #include "Bomberman.h"
 
@@ -10,6 +11,7 @@ public:
 	Game();
 	void run();
 	static const sf::Time TimePerFrame;
+	//static Texture bomberman_texture;
 
 private:
 	void processEvents();
