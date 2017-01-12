@@ -1,12 +1,12 @@
-#include "TextureHolder.h"
 #include <SFML/Graphics.hpp>
-#include "Game.h"
+#include "GameLevel.h"
 
+using namespace sf;
 
 
 int main()
-{	
-	Game game;
-	game.run();
+{
+    
+    gameLevel();
 	return 0;
 }
