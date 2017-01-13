@@ -1,5 +1,4 @@
 #include "SFML/Graphics.hpp"
-//#include "Bomberman.h"
 #include "GameLevel.h"
 #include <fstream>
 
@@ -14,17 +13,26 @@ int playerSpeed;
 int lives = 3;
 
 
+struct enemy1
+{
+    Sprite sprite;
+    bool active = false;
+    int gridX, gridY;
+    Time currentTime = Time::Zero;
+}enemy1[10];
+
 Texture  bomberman_up, bomberman_down, bomberman_left, bomberman_right;
 Texture bomb_texture;
 Sprite playerSprite;
 RenderWindow window;
 int windowWidth=1200, windowHeight=600;
+
 View view, currentView;
 Texture background_texture, block_texture, destroyableBlock_texture;
 Texture enemy1_texture, enemy2_texture, enemy3_texture;
 Sprite backgroundSprite, blocksSprites[100], destroyableBlocksSprites[100];
 int nrBlocks = 0, nrDestroyableBlocks = 0;
-
+int nrEnemy1=-1;
 int playerStartX, playerStartY;
 char grid[100][100];
 int gridWidth, gridHeight;
@@ -104,6 +112,7 @@ void gameLevel()
 	   explosion2_texture.loadFromFile("Resources/Textures/explosion2.png");
 	   explosion3_texture.loadFromFile("Resources/Textures/explosion3.png");
 	   explosion4_texture.loadFromFile("Resources/Textures/explosion4.png");
+	   enemy1_texture.loadFromFile("Resources/Textures/enemy1.png");
 
 	   backgroundSprite.setTexture(background_texture);
 	   backgroundSprite.setScale((float)50 / 56, (float)50 / 56);
@@ -163,8 +172,17 @@ void gameLevel()
 				blocksSprites[nrBlocks++].setPosition(j * 50, i * 50);
 			 else if(grid[i][j]=='D')
 			 {
-				destroyableBlocksSprites[nrDestroyableBlocks++].setPosition(j * 50, i * 50);
-				isDestroyableBlockActive[nrDestroyableBlocks] = true;
+				destroyableBlocksSprites[nrDestroyableBlocks].setPosition(j * 50, i * 50);
+				isDestroyableBlockActive[nrDestroyableBlocks++] = true;
+			 }
+			 else if (grid[i][j] == '1')
+			 {
+				enemy1[++nrEnemy1].active = true;
+				enemy1[nrEnemy1].gridX = j;
+				enemy1[nrEnemy1].gridY = i;
+				enemy1[nrEnemy1].sprite.setTexture(enemy1_texture);
+				enemy1[nrEnemy1].sprite.setPosition(j * 50, i * 50);
+				enemy1[nrEnemy1].sprite.setScale(50 / 28., 50 / 28.);
 			 }
 		  }
 	   fin.close();
@@ -205,15 +223,11 @@ void gameLevel()
 
 //Update 
 		  gameLevelUpdate(deltaTime);
-		  //if(view.getCenter().x>=windowWidth/2 && view.getCenter().y >= windowHeight / 2)
 			 view.setCenter(playerPosition.x, playerPosition.y);
-		  window.setView(view);
-		  //mPlayer.move(movement*deltaTime.asSeconds());
+		  window.setView(view);		  
 		  gameLevelRender(window);
 	   }
     }
-    //const  sf::Time Game::TimePerFrame = sf::seconds(1.f / 60.f);
-    
 
 //Functions
 
@@ -232,6 +246,9 @@ void gameLevel()
 			 window.draw(bombs[i].sprite);
 	   window.draw(playerSprite);
 	   for (int i = 0; i < 10; i++)
+		  if (enemy1[i].active)
+			 window.draw(enemy1[i].sprite);
+	   for (int i = 0; i < 10; i++)
 		  if (explosions[i].active)
 			 //drawExplosion(i);
 		  {
@@ -241,21 +258,18 @@ void gameLevel()
 			 window.draw(explosions[i].innerLeft);
 			 window.draw(explosions[i].innerRight);
 
-			 //debug.setString(  "explode " + to_string(explosions[i].center.getPosition().x) + " " + to_string(explosions[i].center.getPosition().y));
 			 window.draw(explosions[i].endUp);
 			 window.draw(explosions[i].endDown);
 			 window.draw(explosions[i].endLeft);
 			 window.draw(explosions[i].endRight);
 			 
 		  }  
-	  window.draw(movement_text);
-	  window.draw(debug);
+	  //window.draw(movement_text);
+	  //window.draw(debug);
 	   window.display();
 	   sf::sleep(milliseconds(1));
 
     }
-    
-
 void playerCreate(int startX, int startY)
     {
 	   playerPosition.x = playerStartX;
@@ -269,14 +283,10 @@ void playerCreate(int startX, int startY)
 	   currentTime = Time::Zero;
 	   playerSprite.setScale(50 / 51., 50 / 51.);
 
-
-	   // bomberman_down.loadFromFile("C:/Users/Alex/Desktop/IP Bomberman/Bomberman/Bomberman/Resources/Textures/bomberman_down.png");
-
 	   playerMoveLeft.texture.loadFromFile("Resources/Textures/bomberman_left.png");
 	   playerMoveLeft.looped = true;
 	   playerMoveLeft.nFrames = 3;
 	   playerMoveLeft.duration = seconds(0.5);
-	   //playerMoveLeft.startFrameOffset = 1;
 
 	   playerIdleLeft.texture = playerMoveLeft.texture;
 	   playerIdleLeft.looped = false;
@@ -287,7 +297,6 @@ void playerCreate(int startX, int startY)
 	   playerMoveRight.looped = true;
 	   playerMoveRight.nFrames = 3;
 	   playerMoveRight.duration = seconds(0.5);
-	   //playerMoveRight.startFrameOffset = 0;
 
 	   playerIdleRight.texture = playerMoveRight.texture;
 	   playerIdleRight.looped = false;
@@ -298,7 +307,6 @@ void playerCreate(int startX, int startY)
 	   playerMoveUp.looped = true;
 	   playerMoveUp.nFrames = 3;
 	   playerMoveUp.duration = seconds(0.5);
-	   //playerMoveUp.startFrameOffset = 1;
 
 	   playerIdleUp.texture = playerMoveUp.texture;
 	   playerIdleUp.looped = false;
@@ -306,11 +314,9 @@ void playerCreate(int startX, int startY)
 	   playerIdleUp.duration = seconds(1);
 
 	   playerMoveDown.texture.loadFromFile("Resources/Textures/bomberman_down.png");
-	   //playerMoveDown.texture = AssetManager::GetTexture("C:/Users/Alex/Desktop/IP Bomberman/Bomberman/Bomberman/Resources/Textures/bomberman_down.png");
 	   playerMoveDown.looped = true;
 	   playerMoveDown.nFrames = 3;
 	   playerMoveDown.duration = seconds(0.5);
-	   //playerMoveDown.startFrameOffset = 1;
 
 	   playerIdleDown.texture = playerMoveDown.texture;
 	   playerIdleDown.looped = false;
@@ -320,12 +326,6 @@ void playerCreate(int startX, int startY)
 	   strcpy(playerDirection, "down");
 	   currentPlayerAnimation = playerIdleDown;
 
-	   //currentPlayerAnimation.texture = playerMoveLeft.texture;
-	   //texture.setSmooth(true);
-	   //texture.loadFromFile("C:/Users/Alex/Desktop/IP Bomberman/Bomberman/Bomberman/Resources/Textures/bomberman_right.png");
-
-	   //playerSprite.setTexture(bomberman_down);
-	   //playerSprite.setTextureRect(IntRect(3, 3, 51, 51));
 	   playerSprite.setPosition(playerPosition.x, playerPosition.y);
 	   font.loadFromFile("Resources/Fonts/calibri.ttf");
 	   movement_text.setFont(font);
@@ -334,8 +334,6 @@ void playerCreate(int startX, int startY)
 void playerUpdate(Time deltaTime)
 {
     playerSprite.setTexture(currentPlayerAnimation.texture);
-    // if (currentPlayerAnimation.nFrames == 1)
-    //   return;
     currentTime += deltaTime;
     float scaledTime = (currentTime.asSeconds() / currentPlayerAnimation.duration.asSeconds());
     int currentFrame = (int)(scaledTime*currentPlayerAnimation.nFrames) + currentPlayerAnimation.startFrameOffset;
@@ -349,29 +347,18 @@ void playerUpdate(Time deltaTime)
 	   currentFrame = currentPlayerAnimation.nFrames - 1 + currentPlayerAnimation.startFrameOffset;
     text.setString(to_string(currentFrame));
     playerSprite.setTextureRect(IntRect(currentFrame * 51, 0, 51, 51));
-    //end of animation update
 
     if (isPlayerMoving)
 	   playerSprite.move(dirX*playerSpeed*deltaTime.asSeconds(), dirY*playerSpeed*deltaTime.asSeconds());
-		  //playerMovement*deltaTime.asSeconds());
     movement_text.move(playerMovement*deltaTime.asSeconds());
     playerPosition.x = playerSprite.getPosition().x;
     playerPosition.y = playerSprite.getPosition().y;
-    
 
     if (isPlayerMoving)
 	   if ((strcmp(playerDirection, "left") == 0 && playerPosition.x <= playerDestination.x) || (strcmp(playerDirection, "right") == 0 && playerPosition.x >= playerDestination.x)
-		  || (strcmp(playerDirection, "up") == 0 && playerPosition.y <= playerDestination.y) || (strcmp(playerDirection, "down") == 0 && playerPosition.y >= playerDestination.y))
-		  //if ((int)(position.x) ==(int)(playerDestination.x) && (int)position.y == (int)playerDestination.y)
+		  || (strcmp(playerDirection, "up") == 0 && playerPosition.y <= playerDestination.y) || (strcmp(playerDirection, "down") == 0 && playerPosition.y >= playerDestination.y))  
 	   {
-		  //position.x = (int)position.x;
-		  //position.y = (int)position.y;
-		  playerSprite.setPosition(playerDestination.x, playerDestination.y);
-
-		 
-			
-			//{
-			//playerSprite.setPosition((int)(position.x), (int)(position.y));
+			playerSprite.setPosition(playerDestination.x, playerDestination.y);
 			if (strcmp(playerDirection, "left") == 0)
 			{
 			    playerGridX--;
@@ -419,47 +406,20 @@ void playerUpdate(Time deltaTime)
 			}
 			
 		 }
-		  //	}
-
-		  //playerplayerMovement_text.setString("Done");
 	   
     playerMovement.x = 0;
     playerMovement.y = 0;
     movement_text.setString("x=" + to_string(playerPosition.x) + " y=" + to_string(playerPosition.y) + "xd=" + to_string(playerDestination.x) + " yd=" + to_string(playerDestination.y) + "\n"
 	   + to_string(playerGridY) + " " + to_string(playerGridX) + "\n");
-    
-    //currentView = window.getView();
-    
+
 }
 
 void gameLevelUpdate(Time deltaTime)
 {
-    if (isPlayerMoving && strcmp(playerDirection, "up") == 0)
-    {
-	  // playerMovement.y -= playerSpeed;
-	   //playerPosition.y -= playerSpeed;
-    }
-    //before, bomberman->speed/60
-    else if (isPlayerMoving && strcmp(playerDirection, "down") == 0)
-    {
-	   //playerMovement.y += playerSpeed;
-	  // playerPosition.y += playerSpeed;
-    }
-    else if (isPlayerMoving && strcmp(playerDirection, "left") == 0)
-    {
-	  // playerMovement.x -= playerSpeed;
-	  // playerPosition.x -= playerSpeed;
-    }
-    else if (isPlayerMoving && strcmp(playerDirection, "right") == 0)
-    {
-	   //playerMovement.x += playerSpeed;
-	  // playerPosition.x += playerSpeed;
-    }
-    //Player update
     playerUpdate(deltaTime);
-    //if(bombCount>0) 
-	   bombsUpdate(deltaTime);
-	   explosionsUpdate(deltaTime);
+    bombsUpdate(deltaTime);
+    explosionsUpdate(deltaTime);
+    enemy1Update(deltaTime);
     
 }
 void handlePlayerInput(sf::Keyboard::Key key, bool isPressed)
@@ -472,9 +432,7 @@ void handlePlayerInput(sf::Keyboard::Key key, bool isPressed)
 	   if (isPlayerMoving == false && grid[playerGridY - 1][playerGridX] != 'U' &&grid[playerGridY - 1][playerGridX] != 'D'  && grid[playerGridY - 1][playerGridX] != 'B')
 	   {
 		  isPlayerMoving = true;
-	     playerDestination.y -= 50;
-		  //if(strcmp(bomberman->direction, "up")!=0)
-		  //{
+		  playerDestination.y -= 50;		
 		  strcpy(playerDirection, "up");
 		  currentPlayerAnimation = playerMoveUp;
 
@@ -492,8 +450,6 @@ void handlePlayerInput(sf::Keyboard::Key key, bool isPressed)
 	   {
 		  isPlayerMoving = true;
 		  playerDestination.y += 50;
-		  //	if (strcmp(bomberman->direction, "down") != 0)
-		  //	{
 		  strcpy(playerDirection, "down");
 		  currentPlayerAnimation = playerMoveDown;
 		  dirX = 0;
@@ -530,9 +486,7 @@ void handlePlayerInput(sf::Keyboard::Key key, bool isPressed)
 	   if ( isPlayerMoving == false && grid[playerGridY][playerGridX + 1] != 'U' &&grid[playerGridY][playerGridX + 1] != 'D'  && grid[playerGridY][playerGridX + 1] != 'B')
 	   {
 		  isPlayerMoving = true;
-		  playerDestination.x += 50;
-		  //	if (strcmp(bomberman->direction, "right") != 0)
-		  //	{
+		  playerDestination.x += 50;		 
 		  strcpy(playerDirection, "right");
 		  currentPlayerAnimation = playerMoveRight;
 		  //}
@@ -553,7 +507,6 @@ void placeBomb()
    
     bombs[i].gridX = playerGridX;
     bombs[i].gridY = playerGridY;
-    //debug.setString(debug.getString() + to_string(bombs[i].gridY) + to_string(bombs[i].gridX) + "   ");
     bombs[i].sprite.setPosition(bombs[i].gridX *50, bombs[i].gridY*50);
     bombs[i].active = true;
     grid[playerGridY][playerGridX] = 'B';
@@ -586,9 +539,7 @@ bool checkDirectionChange()
     if(upKey)
     {
 	   isPlayerMoving = true;
-	   playerDestination.y -= 50;
-	   //if(strcmp(bomberman->direction, "up")!=0)
-	   //{
+	   playerDestination.y -= 50;	  
 	   strcpy(playerDirection, "up");
 	   currentPlayerAnimation = playerMoveUp;
 
@@ -600,9 +551,7 @@ bool checkDirectionChange()
     else if (downKey)
     {
 	   isPlayerMoving = true;
-	   playerDestination.y += 50;
-	   //	if (strcmp(bomberman->direction, "down") != 0)
-	   //	{
+	   playerDestination.y += 50;	  
 	   strcpy(playerDirection, "down");
 	   currentPlayerAnimation = playerMoveDown;
 	   dirX = 0;
@@ -613,9 +562,7 @@ bool checkDirectionChange()
     else if (leftKey)
     {
 	   isPlayerMoving = true;
-	   playerDestination.x -= 50;
-	   //if (strcmp(bomberman->direction, "left") != 0)
-	   //{
+	   playerDestination.x -= 50;	  
 	   strcpy(playerDirection, "left");
 	   currentPlayerAnimation = playerMoveLeft;
 	   //}
@@ -627,9 +574,7 @@ bool checkDirectionChange()
     else if (rightKey)
     {
 	   isPlayerMoving = true;
-	   playerDestination.x += 50;
-	   //	if (strcmp(bomberman->direction, "right") != 0)
-	   //	{
+	   playerDestination.x += 50;	  
 	   strcpy(playerDirection, "right");
 	   currentPlayerAnimation = playerMoveRight;
 	   //}
@@ -643,7 +588,6 @@ bool checkDirectionChange()
 void explode(int posX, int posY)
 {
     int p = 0, i, j;
-    // int exxpos, ypos;
     Vector2i explosionPos;
     explosionPos.x = 0;
     explosionPos.y = 0;
@@ -651,7 +595,6 @@ void explode(int posX, int posY)
 	   p++;
     explosions[p].active = true;
     explosions[p].center.setPosition(posX, posY);
-    //debug.setString(debug.getString() + "explode " + to_string(p) + " " + to_string(explosionGridX) + " " + to_string(explosionGridY) + "     ");
     bool ok;
     for (i = 1; i <= 4; i++) {
 	   ok = true;
@@ -662,12 +605,12 @@ void explode(int posX, int posY)
 		  case 1:
 		  {
 			 explosionPos.y -= j * 50;
-			 debug.setString(debug.getString() + " " + to_string(explosionPos.x) + " " + to_string(explosionPos.y) + "     ");
+			 //debug.setString(debug.getString() + " " + to_string(explosionPos.x) + " " + to_string(explosionPos.y) + "     ");
 			 if (j < explosionLength)
 
 			 {
 				explosions[p].innerUp.setPosition(explosionPos.x, explosionPos.y);
-				debug.setString("ok " + to_string(explosionPos.x) + " " + to_string(explosionPos.y));
+				//debug.setString("ok " + to_string(explosionPos.x) + " " + to_string(explosionPos.y));
 
 			 }
 			 else
@@ -709,8 +652,6 @@ void explode(int posX, int posY)
 			 break;
 		  }
 		  }
-		  debug.setString(debug.getString() + "explode " + to_string(explosionPos.x) + " " + to_string(explosionPos.y) + "     ");
-
 		  if (grid[explosionPos.y/50][explosionPos.x/50] == 'U') //zid indestructibil
 			 ok = false;
 		  else if (grid[explosionPos.y/50][explosionPos.x/50] == 'D') {  //zid destructibil
@@ -752,12 +693,10 @@ void explode(int posX, int posY)
 			   isPlayerMoving = false;
 			   currentTime = Time::Zero;
 			   strcpy(playerDirection, "down");
-			   currentPlayerAnimation = playerIdleDown;
-			 //  playerSprite.setScale(50 / 51., 50 / 51.);
+			   currentPlayerAnimation = playerIdleDown;			
 		    }
 		  
 	   }
-
     }
 }
     
@@ -817,7 +756,6 @@ void explosionsUpdate(sf::Time deltaTime)
 }
 void drawExplosion(int i)
 {
-    //debug.setString(debug.getString() + "draw "  + " ");
     window.draw(explosions[i].endLeft);
     window.draw(explosions[i].innerLeft);
     window.draw(explosions[i].center);
@@ -827,4 +765,16 @@ void drawExplosion(int i)
     window.draw(explosions[i].endUp);
     window.draw(explosions[i].innerDown);
     window.draw(explosions[i].endDown);
+}
+void enemy1Update(Time deltaTime)
+{
+    for(int i=0; i<10; i++)
+	   if (enemy1[i].active)
+	   {
+		  enemy1[i].currentTime += deltaTime;
+		  float scaledTime = (currentTime.asSeconds() / 2.);
+		  int currentFrame = (int)(scaledTime * 13);
+		  currentFrame %= 13;
+		  enemy1[i].sprite.setTextureRect(IntRect(currentFrame * 28, 0, 28, 28));
+	   }
 }

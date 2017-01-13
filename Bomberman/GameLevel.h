@@ -18,4 +18,5 @@ struct playerAnimation;
 	void explode(int gridX, int gridY);
 	void explosionsUpdate(sf::Time deltaTime);
 	void drawExplosion(int i);
+	void enemy1Update(sf::Time deltaTime);
 #endif 
