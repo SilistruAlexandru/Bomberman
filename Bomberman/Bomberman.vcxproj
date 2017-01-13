@@ -152,21 +152,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Animator.cpp" />
-    <ClCompile Include="AssetManager.cpp" />
-    <ClCompile Include="block.cpp" />
-    <ClCompile Include="Bomberman.cpp" />
-    <ClCompile Include="Game.cpp" />
+    <ClCompile Include="GameLevel.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="TextureHolder.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Animator.h" />
-    <ClInclude Include="AssetManager.h" />
-    <ClInclude Include="block.h" />
-    <ClInclude Include="Bomberman.h" />
-    <ClInclude Include="Game.h" />
-    <ClInclude Include="TextureHolder.h" />
+    <ClInclude Include="GameLevel.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
