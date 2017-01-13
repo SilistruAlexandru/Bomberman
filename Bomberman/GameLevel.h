@@ -12,5 +12,10 @@ struct playerAnimation;
 	void playerCreate(int startX, int startY);
 	void playerUpdate(sf::Time deltaTime);
 	void handlePlayerInput(sf::Keyboard::Key key, bool isPressed);
-	
+	void placeBomb();
+	void bombsUpdate(sf::Time deltaTime);
+	bool checkDirectionChange();
+	void explode(int gridX, int gridY);
+	void explosionsUpdate(sf::Time deltaTime);
+	void drawExplosion(int i);
 #endif 

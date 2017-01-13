@@ -11,18 +11,24 @@ Vector2i playerPosition;
 Vector2i playerDestination;
 Vector2f playerMovement;
 int playerSpeed;
+int lives = 3;
+
 
 Texture  bomberman_up, bomberman_down, bomberman_left, bomberman_right;
+Texture bomb_texture;
 Sprite playerSprite;
 RenderWindow window;
+int windowWidth=1200, windowHeight=600;
 View view, currentView;
 Texture background_texture, block_texture, destroyableBlock_texture;
+Texture enemy1_texture, enemy2_texture, enemy3_texture;
 Sprite backgroundSprite, blocksSprites[100], destroyableBlocksSprites[100];
 int nrBlocks = 0, nrDestroyableBlocks = 0;
 
 int playerStartX, playerStartY;
 char grid[100][100];
 int gridWidth, gridHeight;
+int dirX=0, dirY=0;
 
 bool mIsMovingLeft;
 bool mIsMovingRight;
@@ -31,7 +37,7 @@ bool mIsMovingDown;
 
 bool leftKey, rightKey, upKey, downKey;
 
-struct playerAnimation
+struct Animation
 {
     Texture texture;
     int nFrames;
@@ -40,30 +46,64 @@ struct playerAnimation
     int startFrameOffset = 0;
 };
 
-playerAnimation currentPlayerAnimation, playerMoveLeft, playerIdleLeft, playerMoveRight, playerIdleRight, playerMoveUp, playerIdleUp, playerMoveDown, playerIdleDown;
-
+Animation currentPlayerAnimation, playerMoveLeft, playerIdleLeft, playerMoveRight, playerIdleRight, playerMoveUp, playerIdleUp, playerMoveDown, playerIdleDown;
+Animation bombAnimation;
 
 bool isPlayerMoving;
 char playerDirection[6];
 
 Time currentTime;
-Text movement_text, text;
+Text movement_text, text, debug;
 Font font;
+
+bool isDestroyableBlockActive[100];
+int bombLimit = 2, bombCount = 0;
+Time bombDuration = seconds(1);
+struct bomb
+{
+    Sprite sprite;
+    int gridX, gridY;
+    bool active=false;
+    Time currentTime=Time::Zero;
+
+}bombs[10];
+
+struct explosion
+{
+    Sprite center;
+    Sprite endUp, endDown, endLeft, endRight;
+    Sprite innerUp, innerDown, innerLeft, innerRight;
+    bool active = false;
+    Time currentTime = Time::Zero;
+    Texture currentTexture;
+}explosions[10];
+
+Texture explosion1_texture, explosion2_texture, explosion3_texture, explosion4_texture;
+int explosionLength = 4;
+Time explosionDuration = seconds(1);
+
 //Functia principala
 void gameLevel()
 {
-	  
-    
-    RenderWindow window(sf::VideoMode(1000, 500), "Bomberman");
+		 font.loadFromFile("Resources/Fonts/calibri.ttf");
+		 debug.setFont(font);
+		 debug.setPosition(200, 200);
+		 
+		 RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "Bomberman");
 	  // ,mIsMovingUp(false)  
 	   window.setFramerateLimit(60);
 	   //playerSprite.setOrigin(50 / 2., 50 / 2.);
 	   View view(FloatRect(0, 0, window.getSize().x, window.getSize().y));
 	   view.setCenter(playerSprite.getOrigin());
 	   //window.setView(view);
-	   background_texture.loadFromFile("C:/Users/Alex/Desktop/IP Bomberman/Bomberman/Bomberman/Resources/Textures/Tiles.png");
-	   block_texture.loadFromFile("C:/Users/Alex/Desktop/IP Bomberman/Bomberman/Bomberman/Resources/Textures/block.PNG");
-	   destroyableBlock_texture.loadFromFile("C:/Users/Alex/Desktop/IP Bomberman/Bomberman/Bomberman/Resources/Textures/destroyable_block.PNG");
+	   background_texture.loadFromFile("Resources/Textures/Tiles.png");
+	   block_texture.loadFromFile("Resources/Textures/block.PNG");
+	   destroyableBlock_texture.loadFromFile("Resources/Textures/destroyable_block.PNG");
+	   bomb_texture.loadFromFile("Resources/Textures/bomb.png");
+	   explosion1_texture.loadFromFile("Resources/Textures/explosion1.png");
+	   explosion2_texture.loadFromFile("Resources/Textures/explosion2.png");
+	   explosion3_texture.loadFromFile("Resources/Textures/explosion3.png");
+	   explosion4_texture.loadFromFile("Resources/Textures/explosion4.png");
 
 	   backgroundSprite.setTexture(background_texture);
 	   backgroundSprite.setScale((float)50 / 56, (float)50 / 56);
@@ -72,11 +112,41 @@ void gameLevel()
 	   ofstream fout("debug.out");
 	   fin >> gridWidth >> gridHeight;
 	   for (int i = 0; i < 100; i++)
+		  isDestroyableBlockActive[i] = false;
+	   for (int i = 0; i < 100; i++)
 	   {
 		  blocksSprites[i].setTexture(block_texture);
 		  blocksSprites[i].setScale(50 / 59., 50 / 59.);
 		  destroyableBlocksSprites[i].setTexture(destroyableBlock_texture);
 		  destroyableBlocksSprites[i].setScale(50 / 76., 50 / 76.);
+	   }
+	   for (int i = 0; i < 10; i++)
+	   {
+		  bombs[i].sprite.setTexture(bomb_texture);
+		  bombs[i].sprite.setScale(50 / 82., 50 / 82.);
+		  bombs[i].active = false;
+	   }
+	   for (int i = 0; i < 10; i++)
+	   {
+		  explosions[i].center.setTexture(explosion1_texture);
+		  explosions[i].center.setScale(50 / 75., 50 / 75.);
+		  explosions[i].innerUp.setTexture(explosion1_texture);
+		  explosions[i].innerUp.setScale(50 / 75., 50 / 75.);
+		  explosions[i].innerDown.setTexture(explosion1_texture);
+		  explosions[i].innerDown.setScale(50 / 75., 50 / 75.);
+		  explosions[i].innerLeft.setTexture(explosion1_texture);
+		  explosions[i].innerLeft.setScale(50 / 75., 50 / 75.);
+		  explosions[i].innerRight.setTexture(explosion1_texture);
+		  explosions[i].innerRight.setScale(50 / 75., 50 / 75.);
+		  explosions[i].endUp.setTexture(explosion1_texture);
+		  explosions[i].endUp.setScale(50 / 75., 50 / 75.);
+		  explosions[i].endDown.setTexture(explosion1_texture);
+		  explosions[i].endDown.setScale(50 / 75., 50 / 75.);
+		  explosions[i].endLeft.setTexture(explosion1_texture);
+		  explosions[i].endLeft.setScale(50 / 75., 50 / 75.);
+		  explosions[i].endRight.setTexture(explosion1_texture);
+		  explosions[i].endRight.setScale(50 / 75., 50 / 75.);
+		  bombs[i].active = false;
 	   }
 	   for (int i = 0; i < gridWidth; i++)
 		  for (int j = 0; j < gridHeight; j++)
@@ -89,10 +159,13 @@ void gameLevel()
 				playerGridX = j;
 				playerGridY = i;
 			 }
-			 else if (grid[i][j] == 'B')
+			 else if (grid[i][j] == 'U')
 				blocksSprites[nrBlocks++].setPosition(j * 50, i * 50);
 			 else if(grid[i][j]=='D')
+			 {
 				destroyableBlocksSprites[nrDestroyableBlocks++].setPosition(j * 50, i * 50);
+				isDestroyableBlockActive[nrDestroyableBlocks] = true;
+			 }
 		  }
 	   fin.close();
 	   playerCreate(playerStartX, playerStartY);
@@ -132,7 +205,8 @@ void gameLevel()
 
 //Update 
 		  gameLevelUpdate(deltaTime);
-		  view.setCenter(playerPosition.x, playerPosition.y);
+		  //if(view.getCenter().x>=windowWidth/2 && view.getCenter().y >= windowHeight / 2)
+			 view.setCenter(playerPosition.x, playerPosition.y);
 		  window.setView(view);
 		  //mPlayer.move(movement*deltaTime.asSeconds());
 		  gameLevelRender(window);
@@ -150,10 +224,32 @@ void gameLevel()
 	   for (int i = 0; i < 100; i++)
 	   {
 		  window.draw(blocksSprites[i]);
+		  if(isDestroyableBlockActive[i])
 		  window.draw(destroyableBlocksSprites[i]);
 	   }
+	   for (int i = 0; i < 10; i++)
+		  if (bombs[i].active)
+			 window.draw(bombs[i].sprite);
 	   window.draw(playerSprite);
+	   for (int i = 0; i < 10; i++)
+		  if (explosions[i].active)
+			 //drawExplosion(i);
+		  {
+			 window.draw(explosions[i].center);
+			 window.draw(explosions[i].innerUp);
+			 window.draw(explosions[i].innerDown);
+			 window.draw(explosions[i].innerLeft);
+			 window.draw(explosions[i].innerRight);
+
+			 //debug.setString(  "explode " + to_string(explosions[i].center.getPosition().x) + " " + to_string(explosions[i].center.getPosition().y));
+			 window.draw(explosions[i].endUp);
+			 window.draw(explosions[i].endDown);
+			 window.draw(explosions[i].endLeft);
+			 window.draw(explosions[i].endRight);
+			 
+		  }  
 	  window.draw(movement_text);
+	  window.draw(debug);
 	   window.display();
 	   sf::sleep(milliseconds(1));
 
@@ -176,7 +272,7 @@ void playerCreate(int startX, int startY)
 
 	   // bomberman_down.loadFromFile("C:/Users/Alex/Desktop/IP Bomberman/Bomberman/Bomberman/Resources/Textures/bomberman_down.png");
 
-	   playerMoveLeft.texture.loadFromFile("C:/Users/Alex/Desktop/IP Bomberman/Bomberman/Bomberman/Resources/Textures/bomberman_left.png");
+	   playerMoveLeft.texture.loadFromFile("Resources/Textures/bomberman_left.png");
 	   playerMoveLeft.looped = true;
 	   playerMoveLeft.nFrames = 3;
 	   playerMoveLeft.duration = seconds(0.5);
@@ -187,7 +283,7 @@ void playerCreate(int startX, int startY)
 	   playerIdleLeft.nFrames = 1;
 	   playerIdleLeft.duration = seconds(1);
 
-	   playerMoveRight.texture.loadFromFile("C:/Users/Alex/Desktop/IP Bomberman/Bomberman/Bomberman/Resources/Textures/bomberman_right.png");
+	   playerMoveRight.texture.loadFromFile("Resources/Textures/bomberman_right.png");
 	   playerMoveRight.looped = true;
 	   playerMoveRight.nFrames = 3;
 	   playerMoveRight.duration = seconds(0.5);
@@ -198,7 +294,7 @@ void playerCreate(int startX, int startY)
 	   playerIdleRight.nFrames = 1;
 	   playerIdleRight.duration = seconds(1);
 
-	   playerMoveUp.texture.loadFromFile("C:/Users/Alex/Desktop/IP Bomberman/Bomberman/Bomberman/Resources/Textures/bomberman_up.png");
+	   playerMoveUp.texture.loadFromFile("Resources/Textures/bomberman_up.png");
 	   playerMoveUp.looped = true;
 	   playerMoveUp.nFrames = 3;
 	   playerMoveUp.duration = seconds(0.5);
@@ -209,7 +305,7 @@ void playerCreate(int startX, int startY)
 	   playerIdleUp.nFrames = 1;
 	   playerIdleUp.duration = seconds(1);
 
-	   playerMoveDown.texture.loadFromFile("C:/Users/Alex/Desktop/IP Bomberman/Bomberman/Bomberman/Resources/Textures/bomberman_down.png");
+	   playerMoveDown.texture.loadFromFile("Resources/Textures/bomberman_down.png");
 	   //playerMoveDown.texture = AssetManager::GetTexture("C:/Users/Alex/Desktop/IP Bomberman/Bomberman/Bomberman/Resources/Textures/bomberman_down.png");
 	   playerMoveDown.looped = true;
 	   playerMoveDown.nFrames = 3;
@@ -254,8 +350,10 @@ void playerUpdate(Time deltaTime)
     text.setString(to_string(currentFrame));
     playerSprite.setTextureRect(IntRect(currentFrame * 51, 0, 51, 51));
     //end of animation update
+
     if (isPlayerMoving)
-	   playerSprite.move(playerMovement*deltaTime.asSeconds());
+	   playerSprite.move(dirX*playerSpeed*deltaTime.asSeconds(), dirY*playerSpeed*deltaTime.asSeconds());
+		  //playerMovement*deltaTime.asSeconds());
     movement_text.move(playerMovement*deltaTime.asSeconds());
     playerPosition.x = playerSprite.getPosition().x;
     playerPosition.y = playerSprite.getPosition().y;
@@ -270,33 +368,61 @@ void playerUpdate(Time deltaTime)
 		  //position.y = (int)position.y;
 		  playerSprite.setPosition(playerDestination.x, playerDestination.y);
 
-		  isPlayerMoving = false;
-		  //{
-		  //playerSprite.setPosition((int)(position.x), (int)(position.y));
-		  if (strcmp(playerDirection, "left") == 0)
-		  {
-			 currentPlayerAnimation = playerIdleLeft;
-			 playerGridX--;
-		  }
-		  else if (strcmp(playerDirection, "right") == 0)
-		  {
-			 currentPlayerAnimation = playerIdleRight;
-			 playerGridX++;
-		  }
-		  else if (strcmp(playerDirection, "up") == 0)
-		  {
-			 currentPlayerAnimation = playerIdleUp;
-			 playerGridY--;
-		  }
-		  else if (strcmp(playerDirection, "down") == 0)
-		  {
-			 currentPlayerAnimation = playerIdleDown;
-			 playerGridY++;
-		  }
+		 
+			
+			//{
+			//playerSprite.setPosition((int)(position.x), (int)(position.y));
+			if (strcmp(playerDirection, "left") == 0)
+			{
+			    playerGridX--;
+
+			    if (!leftKey || grid[playerGridY][playerGridX - 1] == 'U' || grid[playerGridY][playerGridX - 1] == 'D' || grid[playerGridY][playerGridX - 1] == 'B')
+			    {
+				   isPlayerMoving = false;
+				   currentPlayerAnimation = playerIdleLeft;
+			    }
+			    else playerDestination.x -= 50;
+			    
+			}
+			else if (strcmp(playerDirection, "right") == 0)
+			{
+			    playerGridX++;
+
+			    if (!rightKey || grid[playerGridY][playerGridX+1] == 'U' || grid[playerGridY][playerGridX + 1] == 'D' || grid[playerGridY][playerGridX + 1] == 'B')
+			    {
+				   isPlayerMoving = false;
+				   currentPlayerAnimation = playerIdleRight;
+			    }
+			    else playerDestination.x += 50;
+			}
+			else if (strcmp(playerDirection, "up") == 0)
+			{
+			    playerGridY--;
+
+			    if (!upKey || grid[playerGridY - 1][playerGridX] == 'U' || grid[playerGridY - 1][playerGridX] == 'D'  || grid[playerGridY - 1][playerGridX] == 'B')
+			    {
+				   isPlayerMoving = false;
+				   currentPlayerAnimation = playerIdleUp;
+			    }
+			    else playerDestination.y -= 50;
+			}
+			else if (strcmp(playerDirection, "down") == 0)
+			{
+			    playerGridY++;
+
+			    if (!downKey || grid[playerGridY + 1][playerGridX] == 'U' || grid[playerGridY + 1][playerGridX] == 'D' || grid[playerGridY + 1][playerGridX] == 'B')
+			    {
+				   isPlayerMoving = false;
+				   currentPlayerAnimation = playerIdleDown;
+			    }
+			    else playerDestination.y += 50;
+			}
+			
+		 }
 		  //	}
 
 		  //playerplayerMovement_text.setString("Done");
-	   }
+	   
     playerMovement.x = 0;
     playerMovement.y = 0;
     movement_text.setString("x=" + to_string(playerPosition.x) + " y=" + to_string(playerPosition.y) + "xd=" + to_string(playerDestination.x) + " yd=" + to_string(playerDestination.y) + "\n"
@@ -310,50 +436,59 @@ void gameLevelUpdate(Time deltaTime)
 {
     if (isPlayerMoving && strcmp(playerDirection, "up") == 0)
     {
-	   playerMovement.y -= playerSpeed;
-	   playerPosition.y -= playerSpeed;
+	  // playerMovement.y -= playerSpeed;
+	   //playerPosition.y -= playerSpeed;
     }
     //before, bomberman->speed/60
     else if (isPlayerMoving && strcmp(playerDirection, "down") == 0)
     {
-	   playerMovement.y += playerSpeed;
-	   playerPosition.y += playerSpeed;
+	   //playerMovement.y += playerSpeed;
+	  // playerPosition.y += playerSpeed;
     }
     else if (isPlayerMoving && strcmp(playerDirection, "left") == 0)
     {
-	   playerMovement.x -= playerSpeed;
-	   playerPosition.x -= playerSpeed;
+	  // playerMovement.x -= playerSpeed;
+	  // playerPosition.x -= playerSpeed;
     }
     else if (isPlayerMoving && strcmp(playerDirection, "right") == 0)
     {
-	   playerMovement.x += playerSpeed;
-	   playerPosition.x += playerSpeed;
+	   //playerMovement.x += playerSpeed;
+	  // playerPosition.x += playerSpeed;
     }
     //Player update
     playerUpdate(deltaTime);
+    //if(bombCount>0) 
+	   bombsUpdate(deltaTime);
+	   explosionsUpdate(deltaTime);
     
 }
 void handlePlayerInput(sf::Keyboard::Key key, bool isPressed)
 {
     if (key == sf::Keyboard::Up)
     {
-	   // if (isPressed)
-	   //  leftKey = true;
-	   // else leftKey = false;
-	   if (isPlayerMoving == false && grid[playerGridY-1][playerGridX]!='B' &&grid[playerGridY - 1][playerGridX] != 'D')
+	    if (isPressed)
+	     upKey = true;
+	    else upKey = false;
+	   if (isPlayerMoving == false && grid[playerGridY - 1][playerGridX] != 'U' &&grid[playerGridY - 1][playerGridX] != 'D'  && grid[playerGridY - 1][playerGridX] != 'B')
 	   {
 		  isPlayerMoving = true;
-		  playerDestination.y -= 50;
+	     playerDestination.y -= 50;
 		  //if(strcmp(bomberman->direction, "up")!=0)
 		  //{
 		  strcpy(playerDirection, "up");
 		  currentPlayerAnimation = playerMoveUp;
+
+		  dirX = 0;
+		  dirY = -1;
 	   }
     }
     else if (key == sf::Keyboard::Down)
     {
+	   if (isPressed)
+		  downKey = true;
+	   else downKey = false;
 
-	   if (isPlayerMoving == false && grid[playerGridY + 1][playerGridX] != 'B' && grid[playerGridY + 1][playerGridX] != 'D')
+	   if (isPlayerMoving == false && grid[playerGridY + 1][playerGridX] != 'U' && grid[playerGridY + 1][playerGridX] != 'D' && grid[playerGridY + 1][playerGridX] != 'B')
 	   {
 		  isPlayerMoving = true;
 		  playerDestination.y += 50;
@@ -361,13 +496,19 @@ void handlePlayerInput(sf::Keyboard::Key key, bool isPressed)
 		  //	{
 		  strcpy(playerDirection, "down");
 		  currentPlayerAnimation = playerMoveDown;
+		  dirX = 0;
+		  dirY = 1;
 		  //	}
 	   }
     }
     else if (key == sf::Keyboard::Left)
     {
+	   if (isPressed)
+		  leftKey = true;
+	   else leftKey = false;
 
-	   if (isPlayerMoving == false && grid[playerGridY][playerGridX-1] != 'B' &&grid[playerGridY][playerGridX-1] != 'D')
+
+	   if (isPlayerMoving == false && grid[playerGridY][playerGridX - 1] != 'U' &&grid[playerGridY][playerGridX - 1] != 'D' && grid[playerGridY][playerGridX - 1] != 'B')
 	   {
 		  isPlayerMoving = true;
 		  playerDestination.x -= 50;
@@ -376,12 +517,17 @@ void handlePlayerInput(sf::Keyboard::Key key, bool isPressed)
 		  strcpy(playerDirection, "left");
 		  currentPlayerAnimation = playerMoveLeft;
 		  //}
+		  dirX = -1;
+		  dirY = 0;
 	   }
     }
     else if (key == sf::Keyboard::Right)
     {
+	   if (isPressed)
+		 rightKey = true;
+	   else rightKey = false;
 
-	   if (isPlayerMoving == false && grid[playerGridY][playerGridX + 1] != 'B' &&grid[playerGridY][playerGridX + 1] != 'D')
+	   if ( isPlayerMoving == false && grid[playerGridY][playerGridX + 1] != 'U' &&grid[playerGridY][playerGridX + 1] != 'D'  && grid[playerGridY][playerGridX + 1] != 'B')
 	   {
 		  isPlayerMoving = true;
 		  playerDestination.x += 50;
@@ -390,8 +536,295 @@ void handlePlayerInput(sf::Keyboard::Key key, bool isPressed)
 		  strcpy(playerDirection, "right");
 		  currentPlayerAnimation = playerMoveRight;
 		  //}
+		  dirX = 1;
+		  dirY = 0;
 	   }
     }
-    //else if (key == sf::Keyboard::Escape)
-    // window.close();
+    else if (key == sf::Keyboard::Space && bombCount<bombLimit && grid[playerGridY][playerGridX]!='B')
+	   placeBomb();
+    else if (key == sf::Keyboard::Escape)
+     window.close();
+}
+void placeBomb()
+{   
+    int i = 0;
+    while (bombs[i].active)
+	   i++;
+   
+    bombs[i].gridX = playerGridX;
+    bombs[i].gridY = playerGridY;
+    //debug.setString(debug.getString() + to_string(bombs[i].gridY) + to_string(bombs[i].gridX) + "   ");
+    bombs[i].sprite.setPosition(bombs[i].gridX *50, bombs[i].gridY*50);
+    bombs[i].active = true;
+    grid[playerGridY][playerGridX] = 'B';
+    bombCount++;
+
+}
+void bombsUpdate(sf::Time deltaTime)
+{
+    for(int i=0; i<10; i++)
+	   if (bombs[i].active)
+	   {
+		  bombs[i].currentTime+=deltaTime;
+
+		  float scaledTime = (currentTime.asSeconds() / 0.5);
+		  int currentFrame = (int)(scaledTime*4);
+		  currentFrame %= 4;
+		  bombs[i].sprite.setTextureRect(IntRect(currentFrame * 82, 0, 82, 82));  
+		  if (bombs[i].currentTime > bombDuration)
+		  {
+			 bombs[i].active = false;
+			 bombCount--;
+			 grid[bombs[i].gridY][bombs[i].gridX] = '0';
+			 bombs[i].currentTime = Time::Zero;
+			 explode(bombs[i].sprite.getPosition().x, bombs[i].sprite.getPosition().y);
+		  }
+	   }
+}
+bool checkDirectionChange()
+{
+    if(upKey)
+    {
+	   isPlayerMoving = true;
+	   playerDestination.y -= 50;
+	   //if(strcmp(bomberman->direction, "up")!=0)
+	   //{
+	   strcpy(playerDirection, "up");
+	   currentPlayerAnimation = playerMoveUp;
+
+	   dirX = 0;
+	   dirY = -1;
+	   return true;
+	   
+    }
+    else if (downKey)
+    {
+	   isPlayerMoving = true;
+	   playerDestination.y += 50;
+	   //	if (strcmp(bomberman->direction, "down") != 0)
+	   //	{
+	   strcpy(playerDirection, "down");
+	   currentPlayerAnimation = playerMoveDown;
+	   dirX = 0;
+	   dirY = 1;
+	   return true;
+
+    }
+    else if (leftKey)
+    {
+	   isPlayerMoving = true;
+	   playerDestination.x -= 50;
+	   //if (strcmp(bomberman->direction, "left") != 0)
+	   //{
+	   strcpy(playerDirection, "left");
+	   currentPlayerAnimation = playerMoveLeft;
+	   //}
+	   dirX = -1;
+	   dirY = 0;
+	   return true;
+
+    }
+    else if (rightKey)
+    {
+	   isPlayerMoving = true;
+	   playerDestination.x += 50;
+	   //	if (strcmp(bomberman->direction, "right") != 0)
+	   //	{
+	   strcpy(playerDirection, "right");
+	   currentPlayerAnimation = playerMoveRight;
+	   //}
+	   dirX = 1;
+	   dirY = 0;
+	   return true;
+
+    }
+    return false;
+}
+void explode(int posX, int posY)
+{
+    int p = 0, i, j;
+    // int exxpos, ypos;
+    Vector2i explosionPos;
+    explosionPos.x = 0;
+    explosionPos.y = 0;
+    while (explosions[p].active)
+	   p++;
+    explosions[p].active = true;
+    explosions[p].center.setPosition(posX, posY);
+    //debug.setString(debug.getString() + "explode " + to_string(p) + " " + to_string(explosionGridX) + " " + to_string(explosionGridY) + "     ");
+    bool ok;
+    for (i = 1; i <= 4; i++) {
+	   ok = true;
+	   for (j = 1; j <= explosionLength; j++) {
+		  explosionPos.x = posX;
+		  explosionPos.y = posY;
+		  switch (i) {
+		  case 1:
+		  {
+			 explosionPos.y -= j * 50;
+			 debug.setString(debug.getString() + " " + to_string(explosionPos.x) + " " + to_string(explosionPos.y) + "     ");
+			 if (j < explosionLength)
+
+			 {
+				explosions[p].innerUp.setPosition(explosionPos.x, explosionPos.y);
+				debug.setString("ok " + to_string(explosionPos.x) + " " + to_string(explosionPos.y));
+
+			 }
+			 else
+				explosions[p].endUp.setPosition(explosionPos.x, explosionPos.y);
+			 break;
+		  }
+		  case 2:
+		  {
+
+			 explosionPos.x += j * 50;
+			 if (j < explosionLength)
+
+				explosions[p].innerRight.setPosition(explosionPos.x, explosionPos.y);
+			 else
+
+				explosions[p].endRight.setPosition(explosionPos.x, explosionPos.y);
+			 break;
+		  }
+		  case 3:
+		  {
+			 explosionPos.y += j * 50;
+			 if (j < explosionLength)
+
+				explosions[p].innerDown.setPosition(explosionPos.x, explosionPos.y);
+			 else
+
+				explosions[p].endDown.setPosition(explosionPos.x, explosionPos.y);
+			 break;
+		  }
+		  case 4:
+		  {
+			 explosionPos.x -= j * 50;
+			 if (j < explosionLength)
+
+				explosions[p].innerLeft.setPosition(explosionPos.x, explosionPos.y);
+			 else
+
+				explosions[p].endLeft.setPosition(explosionPos.x, explosionPos.y);
+			 break;
+		  }
+		  }
+		  debug.setString(debug.getString() + "explode " + to_string(explosionPos.x) + " " + to_string(explosionPos.y) + "     ");
+
+		  if (grid[explosionPos.y/50][explosionPos.x/50] == 'U') //zid indestructibil
+			 ok = false;
+		  else if (grid[explosionPos.y/50][explosionPos.x/50] == 'D') {  //zid destructibil
+			 ok = false;
+			 for (int q = 0; q < nrDestroyableBlocks; q++)
+				if ((int)(destroyableBlocksSprites[q].getPosition().x) == explosionPos.x && (int)(destroyableBlocksSprites[q].getPosition().y) == explosionPos.y)
+				{
+				    isDestroyableBlockActive[q] = false;
+				    grid[explosionPos.y / 50][explosionPos.x / 50]='0';
+				    break;
+				}
+
+		  }
+		    if (grid[explosionPos.y/50][explosionPos.x/50] == 'B') 
+			 { //o alta bomba
+			  for(int q=0; q<10; q++)
+				 if (bombs[i].gridX == explosionPos.x / 50 && bombs[i].gridY == explosionPos.y / 50)
+				 {
+					bombs[i].active = false;
+					explode(bombs[i].sprite.getPosition().x, bombs[i].sprite.getPosition().y);
+					bombCount--;
+					grid[bombs[i].gridY][bombs[i].gridX] = '0';
+					bombs[i].currentTime = Time::Zero;
+				 }
+
+			  }
+		    if (abs(playerSprite.getPosition().x - explosionPos.x) < 50 || abs(playerSprite.getPosition().y - explosionPos.y)<50)
+		    {
+			   playerSprite.setPosition(playerStartX, playerStartY);
+			   playerGridX = playerStartX / 50;
+			   playerGridY = playerStartY / 50;
+			   playerPosition.x = playerStartX;
+			   playerPosition.y = playerStartY;
+			   playerDestination.x = playerStartX;
+			   playerDestination.y = playerStartY;
+			   playerMovement.x = 0;
+			   playerMovement.y = 0;
+			   playerSpeed = 200;
+			   isPlayerMoving = false;
+			   currentTime = Time::Zero;
+			   strcpy(playerDirection, "down");
+			   currentPlayerAnimation = playerIdleDown;
+			 //  playerSprite.setScale(50 / 51., 50 / 51.);
+		    }
+		  
+	   }
+
+    }
+}
+    
+
+void explosionsUpdate(sf::Time deltaTime)
+{
+	 
+    int size;
+    for (int i = 0; i<10; i++)
+	   if (explosions[i].active)
+	   {
+		  explosions[i].currentTime += deltaTime;
+		  float scaledTime = (currentTime.asSeconds() / 0.5);
+		  int currentFrame = (int)(scaledTime * 4);
+		  currentFrame %= 4;
+		  if (currentFrame == 0)
+		  {
+			 explosions[i].currentTexture = explosion1_texture;
+			 size = 75;
+		  }
+		  else  if (currentFrame == 1)
+		  {
+			 explosions[i].currentTexture = explosion2_texture;
+			 size = 77;
+		  }
+		  else   if (currentFrame == 2)
+		  {
+			 explosions[i].currentTexture = explosion3_texture;
+			 size = 78;
+		  }
+		  else  if (currentFrame == 3)
+		  {
+			 explosions[i].currentTexture = explosion4_texture;
+			 size = 80;
+		  }
+		  explosions[i].endLeft.setTexture(explosions[i].currentTexture);
+		  explosions[i].endLeft.setTextureRect(IntRect(0 * size, 0, size, size));
+		  explosions[i].innerLeft.setTexture(explosions[i].currentTexture);
+		  explosions[i].innerLeft.setTextureRect(IntRect(1 * size, 0, size, size));
+		  explosions[i].center.setTexture(explosions[i].currentTexture);
+		  explosions[i].center.setTextureRect(IntRect(2 * size, 0, size, size));
+		  explosions[i].innerRight.setTexture(explosions[i].currentTexture);
+		  explosions[i].innerRight.setTextureRect(IntRect(3 * size, 0, size, size));
+		  explosions[i].endRight.setTexture(explosions[i].currentTexture);
+		  explosions[i].endRight.setTextureRect(IntRect(4 * size, 0, size, size));
+		  explosions[i].innerUp.setTexture(explosions[i].currentTexture);
+		  explosions[i].innerUp.setTextureRect(IntRect(5 * size, 0, size, size));
+		  explosions[i].endUp.setTexture(explosions[i].currentTexture);
+		  explosions[i].endUp.setTextureRect(IntRect(6 * size, 0, size, size));
+		  explosions[i].innerDown.setTexture(explosions[i].currentTexture);
+		  explosions[i].innerDown.setTextureRect(IntRect(7 * size, 0, size, size));
+		  explosions[i].endDown.setTexture(explosions[i].currentTexture);
+		  explosions[i].endDown.setTextureRect(IntRect(8 * size, 0, size, size));
+		  if (explosions[i].currentTime > explosionDuration)
+			 explosions[i].active = false;
+	   }
+}
+void drawExplosion(int i)
+{
+    //debug.setString(debug.getString() + "draw "  + " ");
+    window.draw(explosions[i].endLeft);
+    window.draw(explosions[i].innerLeft);
+    window.draw(explosions[i].center);
+    window.draw(explosions[i].innerRight);
+    window.draw(explosions[i].endRight);
+    window.draw(explosions[i].innerUp);
+    window.draw(explosions[i].endUp);
+    window.draw(explosions[i].innerDown);
+    window.draw(explosions[i].endDown);
 }
