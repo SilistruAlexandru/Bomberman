@@ -15,8 +15,16 @@ struct playerAnimation;
 	void placeBomb();
 	void bombsUpdate(sf::Time deltaTime);
 	bool checkDirectionChange();
-	void explode(int gridX, int gridY);
+	void explode(int posX, int posY);
 	void explosionsUpdate(sf::Time deltaTime);
-	void drawExplosion(int i);
+	//void drawExplosion(int i);
 	void enemy1Update(sf::Time deltaTime);
+	void enemy2Update(sf::Time deltaTime);
+	void enemy3Update(sf::Time deltaTime);
+	void enemyValidDirections(int gridX, int gridY, int v[5]);
+	//void enemy2ValidDirections(int gridX, int gridY, int v[5]);
+	bool checkIntersection(sf::Sprite a, sf::Sprite b);
+	void changeExplosionScale(int i, double x);
+	void pickUpDraw();
+	void pickUpUpdate(sf::Time deltaTime);
 #endif 
